@@ -1,0 +1,52 @@
+
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  cursor: cell;
+}
+
+:root {
+  --square-width: 20px;
+}
+
+
+.grid {
+  margin-left: 20px;
+  margin-top: 20px;
+  float:left;
+}
+
+.square {
+  width: var(--square-width);
+  height: var(--square-width);
+  display:inline-block;
+  border: 2px solid white;
+}
+
+.square.selected {
+  border: 2px solid black;
+}
+
+.square:hover:not(.selected) {
+  border: 2px solid darkgrey;
+}
+
+.row {
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.square-editor { 
+  padding-left: 20px;
+  padding-top: 20px;
+  float: left;
+}
