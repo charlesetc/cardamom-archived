@@ -36,6 +36,9 @@ function Square({row, col}) {
   return square;
 }
 
+const numRows = 30;
+const numCols = 20;
+
 function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   const selected = square.id === (selectedSquare || {}).id
   const style = {backgroundColor: square.color()}
@@ -91,13 +94,15 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
           } else if (e.key === 'Backspace' && e.ctrlKey) {
             e.preventDefault()
             square.setHsva(defaultSquareColor)
+            const next = squares[`${square.row}-${square.col - 1}`] || squares[`${square.row - 1}-${numCols - 1}`]
+            if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && square.title.length === 0 && e.shiftKey) {
             e.preventDefault()
             const next = squares[`${square.row - 1}-${square.col}`]
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' &&  square.title.length === 0) {
             e.preventDefault()
-            const next = squares[`${square.row}-${square.col - 1}`]
+            const next = squares[`${square.row}-${square.col - 1}`] || squares[`${square.row - 1}-${numCols - 1}`]
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Escape') {
             setSelectedSquare(null)
@@ -121,8 +126,8 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
 }
 
 function Grid({setSelectedSquare, selectedSquare}) {
-  const rows = range(30);
-  const cols = range(20);
+  const rows = range(numRows);
+  const cols = range(numCols);
   return <table className="grid">
   <tbody>
     {rows.map((i) => 

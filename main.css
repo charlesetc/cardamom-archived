@@ -17,6 +17,7 @@ table {
 :root {
   --square-width: 20px;
   --square-background: #ececec;
+  --lighter-background: #eee;
 }
 
 .grid {
@@ -73,7 +74,12 @@ table {
   width: 600px;
   line-height: 20px;
   border: none;
-  background: var(--square-background);
+  background: var(--lighter-background);
+  font-size: 20%;
+}
+
+.square-editor .cm-editor .cm-content * { 
+  font-family: 'Iosevka Web', monospace;
 }
 
 .cm-editor .cm-activeLine {
