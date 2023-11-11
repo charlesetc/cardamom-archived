@@ -41,9 +41,15 @@ function Square({row, col}) {
 const numRows = 30;
 const numCols = 20;
 
+function Button({square}) {
+  const name = square.title.slice(1, -1)
+  return <button>{name}</button>
+}
+
 function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   const selected = square.id === (selectedSquare || {}).id
-  const style = {backgroundColor: square.color()}
+  const z =  square.row * numCols + square.col
+  const style = {backgroundColor: square.color(), zIndex: z}
   const onClick = () => setSelectedSquare(square)
 
   if (selected) {
@@ -93,6 +99,11 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
             e.preventDefault()
             const next = squares[`${square.row}-${square.col + 1}`]
             if (next) setSelectedSquare(next)
+          } else if (e.key === 'Backspace' && e.ctrlKey && e.shiftKey) {
+            e.preventDefault()
+            square.setHsva(defaultSquareColor)
+            const next = squares[`${square.row - 1}-${square.col}`]
+            if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && e.ctrlKey) {
             e.preventDefault()
             square.setHsva(defaultSquareColor)
@@ -115,14 +126,18 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
         }}/>
     </td>
   } else {
+
+    const isButton = square.title.startsWith && square.title.startsWith('[') && square.title.endsWith(']')
+    const isHeading = square.title.startsWith && square.title.startsWith('#')
+
     return <td
-      className="square"
+      className={`square ${isButton ? 'button' : ''} ${isHeading ? 'heading' : ''}`}
       style={style}
       onClick={onClick}
       id={square.id}>
-      <span className='title'>
-        {square.title}
-      </span>
+      <pre>
+        {isButton ? <Button square={square} /> : <pre className='title'>{square.title}</pre>}
+      </pre>
     </td>
   }
 }

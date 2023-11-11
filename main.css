@@ -1,10 +1,10 @@
 
 
 *, input {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
   font-family: helvetica, sans-serif;
+  /* box-sizing: border-box; */
   font-size: 1rem;
 }
 
@@ -26,6 +26,14 @@ table {
   float:left;
 }
 
+table { 
+  border-collapse: collapse;
+}
+
+.square.selected {
+  border: 2px solid black;
+}
+
 .square {
   width: var(--square-width);
   height: var(--square-width);
@@ -33,23 +41,33 @@ table {
   border: 2px solid white;
 }
 
-.square.selected {
-  /* border: 2px solid black; */
-}
-
 .square input {
   border: none;
   outline: none;
   height: 16px;
   z-index: 200;
-  position: absolute;
   background: transparent;
+  position: relative;
+  top: 3px;
+}
+
+.square button {
+  position: relative;
+}
+
+.square.button {
+  border-radius: 50%;
+}
+
+.square.heading pre {
+  font-size: 26px;
 }
 
 .square .title { 
   position: relative;
   text-align: center;
-  top: 8px;
+  top: 11px;
+  text-align: center;
 }
 
 .row {
