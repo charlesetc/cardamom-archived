@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import CodeMirror from '@uiw/react-codemirror';
 import { Wheel } from '@uiw/react-color';
@@ -33,8 +32,8 @@ function Square({row, col}) {
     setTitle,
     code,
     setCode,
+    color() { return hsvaToHex(square.hsva)}
   };
-  square.color = () => hsvaToHex(square.hsva)
   squares[id] = square;
   return square;
 }
