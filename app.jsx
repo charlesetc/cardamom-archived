@@ -22,6 +22,7 @@ function Square({row, col}) {
   const id = `${row}-${col}`;
   const [hsva, setHsva] = useLocalStorage(`square-${id}-color`, defaultSquareColor);
   const [title, setTitle] = useLocalStorage(`square-${id}-title`, '');
+  const [code, setCode] = useLocalStorage(`square-${id}-code`, '');
   const square = {
     id,
     row,
@@ -30,6 +31,8 @@ function Square({row, col}) {
     setHsva,
     title,
     setTitle,
+    code,
+    setCode,
   };
   square.color = () => hsvaToHex(square.hsva)
   squares[id] = square;
@@ -153,7 +156,8 @@ function SquareEditor({square}) {
     return <div className="square-editor"></div>
   } else {
     return <div className="square-editor">
-      <CodeMirror ref={codeMirrorRef} className="cm" basicSetup={{lineNumbers: false, foldGutter: false}} />
+      {console.log(square.code)}
+      <CodeMirror value={square.code.toString()} onChange={(value) => square.setCode(value)} ref={codeMirrorRef} className="cm" basicSetup={{lineNumbers: false, foldGutter: false}} />
       <Wheel color={square.hsva} onChange={(color) => square.setHsva({ ...square.hsva, ...color.hsva })} width={50} height={50} />
     </div>
   }

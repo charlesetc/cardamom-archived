@@ -80,6 +80,7 @@ table {
 
 .square-editor .cm-editor .cm-content * { 
   font-family: 'Iosevka Web', monospace;
+  font-size: 14px;
 }
 
 .cm-editor .cm-activeLine {
