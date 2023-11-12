@@ -11,6 +11,11 @@ export function range(n) {
   return [...Array(n).keys()];
 }
 
+function useLocalString(key, defaultValue) {
+  const [value, setValue] = useLocalStorage(key, defaultValue);
+  return [value.toString(), setValue];
+}
+
 const defaultSquareColor = { h: 0, s: 0, v: 93, a: 1 }
 
 const codeMirrorRef = React.createRef()
@@ -20,8 +25,8 @@ const squares = {}
 function Square({row, col}) {
   const id = `${row}-${col}`;
   const [hsva, setHsva] = useLocalStorage(`square-${id}-color`, defaultSquareColor);
-  const [title, setTitle] = useLocalStorage(`square-${id}-title`, '');
-  const [code, setCode] = useLocalStorage(`square-${id}-code`, '');
+  const [title, setTitle] = useLocalString(`square-${id}-title`, '');
+  const [code, setCode] = useLocalString(`square-${id}-code`, '');
   const square = {
     id,
     row,
@@ -62,6 +67,9 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
         type='text'
         autoFocus
         value={square.title}
+        style={{
+          width: `${square.title.length + 1}ch`,
+        }}
         onFocus={(e) => { console.log("focus", e);  e.target.select()}}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.shiftKey) {
@@ -128,10 +136,14 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   } else {
 
     const isButton = square.title.startsWith && square.title.startsWith('[') && square.title.endsWith(']')
-    const isHeading = square.title.startsWith && square.title.startsWith('#')
+
+    console.log(square.title)
+    if (square.title && square.title.startsWith && square.title.startsWith("13")) {
+      console.log("isShort", square.title.length <= 2, square.title)
+    }
 
     return <td
-      className={`square ${isButton ? 'button' : ''} ${isHeading ? 'heading' : ''}`}
+      className={`square ${isButton ? 'button' : ''} ${square.title.length <= 2 ? 'short' : ''}`}
       style={style}
       onClick={onClick}
       id={square.id}>
@@ -166,12 +178,17 @@ function Grid({setSelectedSquare, selectedSquare}) {
 }
 
 function SquareEditor({square}) {
+  const basicSetup = {
+    lineNumbers: false,
+    foldGutter: false,
+    closeBrackets: true,
+  }
   if (!square) {
     return <div className="square-editor"></div>
   } else {
     return <div className="square-editor">
       {console.log(square.code)}
-      <CodeMirror value={square.code.toString()} onChange={(value) => square.setCode(value)} ref={codeMirrorRef} className="cm" basicSetup={{lineNumbers: false, foldGutter: false}} />
+      <CodeMirror value={square.code.toString()} onChange={(value) => square.setCode(value)} ref={codeMirrorRef} className="cm" basicSetup={basicSetup} />
       <Wheel color={square.hsva} onChange={(color) => square.setHsva({ ...square.hsva, ...color.hsva })} width={50} height={50} />
     </div>
   }
@@ -179,10 +196,10 @@ function SquareEditor({square}) {
 
 function Main() {
   const [selectedSquare, setSelectedSquare] = useState(null);
-  return <>
+  return <div className='main'>
     <Grid selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
     <SquareEditor square={selectedSquare} />
-  </>
+  </div>
 }
 
 const targetDiv = document.getElementById('root'); // Replace 'root' with the ID of your target div

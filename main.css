@@ -5,7 +5,11 @@
   padding: 0;
   font-family: helvetica, sans-serif;
   /* box-sizing: border-box; */
-  font-size: 1rem;
+  font-size: 14px;
+}
+
+.main button {
+  cursor: pointer
 }
 
 table {
@@ -15,9 +19,10 @@ table {
 }
 
 :root {
-  --square-width: 20px;
+  --square-width: 18px;
   --square-background: #ececec;
   --lighter-background: #eee;
+  --border-width: 1px;
 }
 
 .grid {
@@ -31,14 +36,15 @@ table {
 }
 
 .square.selected {
-  border: 2px solid black;
+  border: var(--border-width) solid black;
+  z-index: 100000 !important;
 }
 
 .square {
   width: var(--square-width);
   height: var(--square-width);
   display: inline-block;
-  border: 2px solid white;
+  border: var(--border-width) solid white;
 }
 
 .square input {
@@ -48,11 +54,15 @@ table {
   z-index: 200;
   background: transparent;
   position: relative;
-  top: 3px;
+  top: 2px;
+  /* padding-left: 3px; */
+  padding-left: 1px;
 }
 
 .square button {
   position: relative;
+  padding: 0px 2px;
+  font-size: 13px;
 }
 
 .square.button {
@@ -65,10 +75,14 @@ table {
 
 .square .title { 
   position: relative;
-  text-align: center;
-  top: 11px;
+  top: 10px;
   text-align: center;
 }
+
+.square:not(.short) .title {
+  padding-left: 3px;
+}
+
 
 .row {
   white-space: nowrap;
@@ -98,7 +112,8 @@ table {
 
 .square-editor .cm-editor .cm-content * { 
   font-family: 'Iosevka Web', monospace;
-  font-size: 14px;
+  font-size: 13px;
+  word-wrap: break-word;
 }
 
 .cm-editor .cm-activeLine {
