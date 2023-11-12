@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createRoot } from 'react-dom/client'
-import CodeMirror from '@uiw/react-codemirror';
+import { CodeMirror } from "./codemirror.jsx";
 import { Wheel } from '@uiw/react-color';
 import { hsvaToHex } from '@uiw/color-convert';
 import { useLocalStorage } from '@rehooks/local-storage';
@@ -22,8 +22,8 @@ const codeMirrorRef = React.createRef()
 
 const squares = {}
 
-function Square({row, col}) {
-  const id = `${row}-${col}`;
+function Square({row, col, prefix}) {
+  const id = prefix ? `${prefix}-${row}-${col}` : `${row}-${col}`;
   const [hsva, setHsva] = useLocalStorage(`square-${id}-color`, defaultSquareColor);
   const [title, setTitle] = useLocalString(`square-${id}-title`, '');
   const [code, setCode] = useLocalString(`square-${id}-code`, '');
@@ -43,17 +43,20 @@ function Square({row, col}) {
   return square;
 }
 
-const numRows = 30;
-const numCols = 20;
-
 function Button({square}) {
   const name = square.title.slice(1, -1)
-  return <button>{name}</button>
+  return <button
+    onClick={(e) => {
+      if (!e.shiftKey) {
+        e.stopPropagation()
+      }
+    }}
+    >{name}</button>
 }
 
 function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   const selected = square.id === (selectedSquare || {}).id
-  const z =  square.row * numCols + square.col
+  const z = 1000 - square.row * numCols - square.col
   const style = {backgroundColor: square.color(), zIndex: z}
   const onClick = () => setSelectedSquare(square)
 
@@ -154,21 +157,22 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   }
 }
 
-function Grid({setSelectedSquare, selectedSquare}) {
-  const rows = range(numRows);
-  const cols = range(numCols);
+const numRows = 30;
+const numCols = 22;
+
+function Grid({prefix, rows, cols, setSelectedSquare, selectedSquare}) {
   return <table className="grid">
   <tbody>
-    {rows.map((i) => 
+    {range(rows).map((i) => 
       <tr key={i} className="row">
-        {cols.map((j) => {
-          const square = Square({row: i, col: j});
+        {range(cols).map((j) => {
+          const square = Square({row: i, col: j, prefix: prefix});
           return (
             <RenderSquare
-            key={square.id}
-            selectedSquare={selectedSquare}
-            setSelectedSquare={setSelectedSquare}
-            square={square} />
+              key={square.id}
+              selectedSquare={selectedSquare}
+              setSelectedSquare={setSelectedSquare}
+              square={square} />
           )
         })}
       </tr>
@@ -178,17 +182,13 @@ function Grid({setSelectedSquare, selectedSquare}) {
 }
 
 function SquareEditor({square}) {
-  const basicSetup = {
-    lineNumbers: false,
-    foldGutter: false,
-    closeBrackets: true,
-  }
   if (!square) {
     return <div className="square-editor"></div>
   } else {
     return <div className="square-editor">
       {console.log(square.code)}
-      <CodeMirror value={square.code.toString()} onChange={(value) => square.setCode(value)} ref={codeMirrorRef} className="cm" basicSetup={basicSetup} />
+      <CodeMirror ref={codeMirrorRef} value={square.code.toString()} onChange={(value) => square.setCode(value)}
+      />
       <Wheel color={square.hsva} onChange={(color) => square.setHsva({ ...square.hsva, ...color.hsva })} width={50} height={50} />
     </div>
   }
@@ -197,8 +197,10 @@ function SquareEditor({square}) {
 function Main() {
   const [selectedSquare, setSelectedSquare] = useState(null);
   return <div className='main'>
-    <Grid selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <Grid prefix="a" rows={numRows + 3} cols={1} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <Grid rows={numRows} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
     <SquareEditor square={selectedSquare} />
+    <Grid prefix='b' rows={2} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
   </div>
 }
 

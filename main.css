@@ -1,11 +1,13 @@
 
-
 *, input {
   margin: 0;
   padding: 0;
   font-family: helvetica, sans-serif;
-  /* box-sizing: border-box; */
   font-size: 14px;
+}
+
+body { 
+  margin-top: 20px;
 }
 
 .main button {
@@ -27,7 +29,7 @@ table {
 
 .grid {
   margin-left: 20px;
-  margin-top: 20px;
+  margin-bottom: 4px;
   float:left;
 }
 
@@ -41,6 +43,7 @@ table {
 }
 
 .square {
+  position: relative;
   width: var(--square-width);
   height: var(--square-width);
   display: inline-block;
@@ -61,6 +64,7 @@ table {
 
 .square button {
   position: relative;
+  z-index: 2;
   padding: 0px 2px;
   font-size: 13px;
 }
@@ -93,7 +97,7 @@ table {
 
 .square-editor { 
   padding-left: 20px;
-  padding-top: 20px;
+  padding-top: 1px;
   float: left;
 }
 
@@ -103,9 +107,9 @@ table {
 }
 
 .cm-editor { 
-  width: 600px;
-  line-height: 20px;
+  line-height: 18px;
   border: none;
+  width: 400px;
   background: var(--lighter-background);
   font-size: 20%;
 }
@@ -113,7 +117,6 @@ table {
 .square-editor .cm-editor .cm-content * { 
   font-family: 'Iosevka Web', monospace;
   font-size: 13px;
-  word-wrap: break-word;
 }
 
 .cm-editor .cm-activeLine {
@@ -130,4 +133,10 @@ table {
 
 .w-color-wheel-pointer {
   display: none;
+}
+
+.backpack { 
+  position: fixed;
+  bottom: 20px;
+  width: 20px;
 }
