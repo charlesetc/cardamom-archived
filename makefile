@@ -1,8 +1,8 @@
 build:
-	esbuild app.jsx --bundle --minify --sourcemap --target=chrome58,firefox58 --outfile=out.js
+	esbuild src/app.jsx --bundle --minify --sourcemap --target=chrome58,firefox58 --outfile=static/out.js
 
 watch:
-	esbuild app.jsx --bundle --sourcemap --target=chrome58,firefox58 --outfile=out.js --watch
+	esbuild src/app.jsx --bundle --sourcemap --target=chrome58,firefox58 --outfile=static/out.js --watch
 
 serve:
-	python -m http.server 8000
+	cd static && python -m http.server 8000

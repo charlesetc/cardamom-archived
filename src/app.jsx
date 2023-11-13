@@ -3,17 +3,26 @@ import { createRoot } from 'react-dom/client'
 import { CodeMirror } from "./codemirror.jsx";
 import { Wheel } from '@uiw/react-color';
 import { hsvaToHex } from '@uiw/color-convert';
-import { useLocalStorage } from '@rehooks/local-storage';
-
 const { useState } = React;
 
 export function range(n) {
   return [...Array(n).keys()];
 }
 
-function useLocalString(key, defaultValue) {
-  const [value, setValue] = useLocalStorage(key, defaultValue);
-  return [value.toString(), setValue];
+function useLocalStorage(key, defaultValue) {
+  let startingValue;
+  if (localStorage[key]) {
+    startingValue = JSON.parse(localStorage[key]);
+  } else {
+    startingValue = defaultValue;
+  }
+
+  const [value, setReactValue] = useState(startingValue);
+  const setValue = (newValue) => {
+    setReactValue(newValue);
+    localStorage[key] = JSON.stringify(newValue);
+  }
+  return [value, setValue];
 }
 
 const defaultSquareColor = { h: 0, s: 0, v: 93, a: 1 }
@@ -21,12 +30,13 @@ const defaultSquareColor = { h: 0, s: 0, v: 93, a: 1 }
 const codeMirrorRef = React.createRef()
 
 const squares = {}
+window.squares = squares
 
 function Square({row, col, prefix}) {
-  const id = prefix ? `${prefix}-${row}-${col}` : `${row}-${col}`;
+  const id = `${prefix}-${row}-${col}`;
   const [hsva, setHsva] = useLocalStorage(`square-${id}-color`, defaultSquareColor);
-  const [title, setTitle] = useLocalString(`square-${id}-title`, '');
-  const [code, setCode] = useLocalString(`square-${id}-code`, '');
+  const [title, setTitle] = useLocalStorage(`square-${id}-title`, '');
+  const [code, setCode] = useLocalStorage(`square-${id}-code`, '');
   const square = {
     id,
     row,
@@ -37,7 +47,8 @@ function Square({row, col, prefix}) {
     setTitle,
     code,
     setCode,
-    color() { return hsvaToHex(square.hsva)}
+    color() { return hsvaToHex(square.hsva)},
+    at(x, y) { return squares[`${prefix}-${row + y}-${col + x}`] }
   };
   squares[id] = square;
   return square;
@@ -68,65 +79,71 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
       id={square.id}>
       <input
         type='text'
-        autoFocus
+        autoFocus                                    
         value={square.title}
         style={{
           width: `${square.title.length + 1}ch`,
         }}
-        onFocus={(e) => { console.log("focus", e);  e.target.select()}}
+        onFocus={(e) => { e.target.select()}}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.shiftKey) {
             e.preventDefault()
-            const next = squares[`${square.row - 1}-${square.col}`]
+            const next = square.at(0, -1);
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Enter' && e.ctrlKey) {
             e.preventDefault()
             codeMirrorRef.current.view.focus()
           } else if (e.key === 'Enter') {
             e.preventDefault()
-            const next = squares[`${square.row + 1}-${square.col}`]
+            const next = square.at(0, 1);
             if (next) setSelectedSquare(next)
-          } else if (e.key === 'ArrowUp') {
+          } else if (e.key === 'ArrowUp' && !(e.shiftKey || e.ctrlKey)) { 
             e.preventDefault()
-            const next = squares[`${square.row - 1}-${square.col}`]
+            const next = square.at(0, -1);
             if (next) setSelectedSquare(next)
-          } else if (e.key === 'ArrowDown') {
+          } else if (e.key === 'ArrowDown' && !(e.shiftKey || e.ctrlKey)) {
             e.preventDefault()
-            const next = squares[`${square.row + 1}-${square.col}`]
+            const next = square.at(0, 1);
             if (next) setSelectedSquare(next)
-          } else if (e.key === 'ArrowLeft') {
-            e.preventDefault()
-            const next = squares[`${square.row}-${square.col - 1}`]
-            if (next) setSelectedSquare(next)
-          } else if (e.key === 'ArrowRight') {
-            e.preventDefault()
-            const next = squares[`${square.row}-${square.col + 1}`]
-            if (next) setSelectedSquare(next)
+          } else if (e.key === 'ArrowLeft' && !(e.shiftKey || e.ctrlKey)) {
+            const atStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+            if (atStart) {
+              e.preventDefault()
+              const next = square.at(-1, 0);
+              if (next) setSelectedSquare(next)
+            }
+          } else if (e.key === 'ArrowRight' && !(e.shiftKey || e.ctrlKey)) { 
+            const atEnd = e.target.selectionStart === e.target.value.length && e.target.selectionEnd === e.target.value.length;
+            if (atEnd) {
+              e.preventDefault()
+              const next = square.at(1, 0);
+              if (next) setSelectedSquare(next)
+            }
           } else if (e.key === 'Tab' && e.shiftKey) {
             e.preventDefault()
-            const next = squares[`${square.row}-${square.col - 1}`]
+            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Tab') {
             e.preventDefault()
-            const next = squares[`${square.row}-${square.col + 1}`]
+            const next = square.at(1, 0) || square.at(-1 * numCols + 1, 1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && e.ctrlKey && e.shiftKey) {
             e.preventDefault()
             square.setHsva(defaultSquareColor)
-            const next = squares[`${square.row - 1}-${square.col}`]
+            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && e.ctrlKey) {
             e.preventDefault()
             square.setHsva(defaultSquareColor)
-            const next = squares[`${square.row}-${square.col - 1}`] || squares[`${square.row - 1}-${numCols - 1}`]
+            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && square.title.length === 0 && e.shiftKey) {
             e.preventDefault()
-            const next = squares[`${square.row - 1}-${square.col}`]
+            const next = square.at(1, 0) || square.at(-1 * numCols + 1, 1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' &&  square.title.length === 0) {
             e.preventDefault()
-            const next = squares[`${square.row}-${square.col - 1}`] || squares[`${square.row - 1}-${numCols - 1}`]
+            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Escape') {
             setSelectedSquare(null)
@@ -139,11 +156,6 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   } else {
 
     const isButton = square.title.startsWith && square.title.startsWith('[') && square.title.endsWith(']')
-
-    console.log(square.title)
-    if (square.title && square.title.startsWith && square.title.startsWith("13")) {
-      console.log("isShort", square.title.length <= 2, square.title)
-    }
 
     return <td
       className={`square ${isButton ? 'button' : ''} ${square.title.length <= 2 ? 'short' : ''}`}
@@ -166,7 +178,7 @@ function Grid({prefix, rows, cols, setSelectedSquare, selectedSquare}) {
     {range(rows).map((i) => 
       <tr key={i} className="row">
         {range(cols).map((j) => {
-          const square = Square({row: i, col: j, prefix: prefix});
+          const square = Square({row:i , col: j, prefix: prefix});
           return (
             <RenderSquare
               key={square.id}
@@ -181,12 +193,21 @@ function Grid({prefix, rows, cols, setSelectedSquare, selectedSquare}) {
   </table>
 }
 
-function SquareEditor({square}) {
+function NavigationGrids({setSelectedSquare, selectedSquare}) {
+  return <div className='navigation-grid'>
+    <Grid prefix='b' rows={2} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <Grid prefix='c' rows={3} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+  </div>;
+}
+
+function SquareEditor({square, selectedSquare, setSelectedSquare}) {
   if (!square) {
-    return <div className="square-editor"></div>
+    return <div className="square-editor">
+        <NavigationGrids selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+      </div>
   } else {
     return <div className="square-editor">
-      {console.log(square.code)}
+      <NavigationGrids selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
       <CodeMirror ref={codeMirrorRef} value={square.code.toString()} onChange={(value) => square.setCode(value)}
       />
       <Wheel color={square.hsva} onChange={(color) => square.setHsva({ ...square.hsva, ...color.hsva })} width={50} height={50} />
@@ -197,12 +218,11 @@ function SquareEditor({square}) {
 function Main() {
   const [selectedSquare, setSelectedSquare] = useState(null);
   return <div className='main'>
-    <Grid prefix="a" rows={numRows + 3} cols={1} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
-    <Grid rows={numRows} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
-    <SquareEditor square={selectedSquare} />
-    <Grid prefix='b' rows={2} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <Grid prefix='a' rows={numRows} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <SquareEditor square={selectedSquare} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
   </div>
 }
+
 
 const targetDiv = document.getElementById('root'); // Replace 'root' with the ID of your target div
 const root = createRoot(targetDiv);
