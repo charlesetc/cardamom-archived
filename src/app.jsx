@@ -1,42 +1,45 @@
-import * as React from 'react'
+import React, { useEffect } from 'react'
+import {atom, useAtom} from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
 import { createRoot } from 'react-dom/client'
-import { CodeMirror } from "./codemirror.jsx";
+import { CodeMirror, editorView } from "./codemirror.jsx";
 import { Wheel } from '@uiw/react-color';
 import { hsvaToHex } from '@uiw/color-convert';
+import { useLocalStorage } from './local-storage.jsx';
+import { deepEqual } from './utils.js'
 const { useState } = React;
 
 export function range(n) {
   return [...Array(n).keys()];
 }
 
-function useLocalStorage(key, defaultValue) {
-  let startingValue;
-  if (localStorage[key]) {
-    startingValue = JSON.parse(localStorage[key]);
-  } else {
-    startingValue = defaultValue;
-  }
-
-  const [value, setReactValue] = useState(startingValue);
-  const setValue = (newValue) => {
-    setReactValue(newValue);
-    localStorage[key] = JSON.stringify(newValue);
-  }
-  return [value, setValue];
-}
-
 const defaultSquareColor = { h: 0, s: 0, v: 93, a: 1 }
-
-const codeMirrorRef = React.createRef()
+window.defaultSquareColor = defaultSquareColor
 
 const squares = {}
-window.squares = squares
+
+const hueAtom = atomWithStorage('hue-atom-4', 220)
 
 function Square({row, col, prefix}) {
   const id = `${prefix}-${row}-${col}`;
   const [hsva, setHsva] = useLocalStorage(`square-${id}-color`, defaultSquareColor);
   const [title, setTitle] = useLocalStorage(`square-${id}-title`, '');
   const [code, setCode] = useLocalStorage(`square-${id}-code`, '');
+  const [hue, setHue] = useAtom(hueAtom)
+
+  function newColorIfNeeded() {
+    if (deepEqual(hsva, defaultSquareColor)) {
+      const newColor = {
+        h: hue,
+        s: 40,
+        v: 93,
+        a: 1,
+      }
+      setHue((hue + 5) % 360)
+      setHsva(newColor)
+    }
+  }
+
   const square = {
     id,
     row,
@@ -46,8 +49,12 @@ function Square({row, col, prefix}) {
     title,
     setTitle,
     code,
-    setCode,
-    color() { return hsvaToHex(square.hsva)},
+    inputRef: React.useRef(),
+    updateCode(value) {
+      newColorIfNeeded()
+      setCode(value)
+    },
+    color() { return hsvaToHex(square.hsva) },
     at(x, y) { return squares[`${prefix}-${row + y}-${col + x}`] }
   };
   squares[id] = square;
@@ -69,7 +76,10 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
   const selected = square.id === (selectedSquare || {}).id
   const z = 1000 - square.row * numCols - square.col
   const style = {backgroundColor: square.color(), zIndex: z}
-  const onClick = () => setSelectedSquare(square)
+  const onClick = function() {
+    if (selected) square.inputRef.current.focus()
+    setSelectedSquare(square)
+  } 
 
   if (selected) {
     return <td
@@ -79,6 +89,7 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
       id={square.id}>
       <input
         type='text'
+        ref={square.inputRef}
         autoFocus                                    
         value={square.title}
         style={{
@@ -92,7 +103,7 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Enter' && e.ctrlKey) {
             e.preventDefault()
-            codeMirrorRef.current.view.focus()
+            editorView.focus()
           } else if (e.key === 'Enter') {
             e.preventDefault()
             const next = square.at(0, 1);
@@ -130,7 +141,7 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
           } else if (e.key === 'Backspace' && e.ctrlKey && e.shiftKey) {
             e.preventDefault()
             square.setHsva(defaultSquareColor)
-            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
+            const next = square.at(0, -1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && e.ctrlKey) {
             e.preventDefault()
@@ -139,7 +150,7 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' && square.title.length === 0 && e.shiftKey) {
             e.preventDefault()
-            const next = square.at(1, 0) || square.at(-1 * numCols + 1, 1)
+            const next = square.at(0, -1)
             if (next) setSelectedSquare(next)
           } else if (e.key === 'Backspace' &&  square.title.length === 0) {
             e.preventDefault()
@@ -149,9 +160,7 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
             setSelectedSquare(null)
           }
         }}
-        onChange={(e) => {
-          square.setTitle(e.target.value)
-        }}/>
+        onChange={(e) => { square.setTitle(e.target.value) }}/>
     </td>
   } else {
 
@@ -200,26 +209,34 @@ function NavigationGrids({setSelectedSquare, selectedSquare}) {
   </div>;
 }
 
-function SquareEditor({square, selectedSquare, setSelectedSquare}) {
+function SquareEditor({ square, setSelectedSquare}) {
+  const [hue, setHue] = useAtom(hueAtom)
+
   if (!square) {
     return <div className="square-editor">
-        <NavigationGrids selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+        <NavigationGrids selectedSquare={square} setSelectedSquare={setSelectedSquare} />
       </div>
   } else {
     return <div className="square-editor">
-      <NavigationGrids selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
-      <CodeMirror ref={codeMirrorRef} value={square.code.toString()} onChange={(value) => square.setCode(value)}
-      />
-      <Wheel color={square.hsva} onChange={(color) => square.setHsva({ ...square.hsva, ...color.hsva })} width={50} height={50} />
+      <NavigationGrids selectedSquare={square} setSelectedSquare={setSelectedSquare} />
+      {console.log('render square editor', square)}
+      <CodeMirror
+        square={square}
+        onChange={(value) => square.updateCode(value)}
+        onControlEnter={() => square.inputRef.current.focus() } />
+      <Wheel color={defaultSquareColor} onChange={(color) => {
+        setHue(color.hsva.h)
+        square.setHsva(color.hsva) 
+      }} width={50} height={50} />
     </div>
   }
 }
 
 function Main() {
-  const [selectedSquare, setSelectedSquare] = useState(null);
+    const [selectedSquare, setSelectedSquare] = useState(null);
   return <div className='main'>
     <Grid prefix='a' rows={numRows} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
-    <SquareEditor square={selectedSquare} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <SquareEditor square={selectedSquare} setSelectedSquare={setSelectedSquare} />
   </div>
 }
 
