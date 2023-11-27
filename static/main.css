@@ -142,9 +142,13 @@ table {
   display: none;
 }
 
-.navigation-grids {
+.navigation-grid {
   display: flex;
   flex-direction: column;
+}
+
+.navigation-grid td { 
+  cursor: pointer
 }
 
 #vline {

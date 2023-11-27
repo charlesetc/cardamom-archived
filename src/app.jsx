@@ -7,7 +7,7 @@ import { Wheel } from '@uiw/react-color';
 import { hsvaToHex } from '@uiw/color-convert';
 import { useLocalStorage } from './local-storage.jsx';
 import { deepEqual } from './utils.js'
-const { useState } = React;
+import { keymap } from '@codemirror/view';
 
 export function range(n) {
   return [...Array(n).keys()];
@@ -19,16 +19,24 @@ window.defaultSquareColor = defaultSquareColor
 const squares = {}
 
 const hueAtom = atomWithStorage('hue-atom-4', 220)
+const selectedAtom = atom(null)
+
+const aPageAtom = atom("a0.0")
+const bPageAtom = atom("b0.0")
 
 function Square({row, col, prefix}) {
-  const id = `${prefix}-${row}-${col}`;
-  const [hsva, setHsva] = useLocalStorage(`square-${id}-color`, defaultSquareColor);
-  const [title, setTitle] = useLocalStorage(`square-${id}-title`, '');
-  const [code, setCode] = useLocalStorage(`square-${id}-code`, '');
+  function makeId(row, col) {
+    return `${prefix}${row}.${col}`;
+  }
+  const id = makeId(row, col);
+  // TODO: are these breaking the Rules of Hooks?
+  const [hsva, setHsva] = useLocalStorage(`${id}-color`, defaultSquareColor);
+  const [title, setTitle] = useLocalStorage(`${id}-title`, '');
+  const [code, setCode] = useLocalStorage(`${id}-code`, '');
   const [hue, setHue] = useAtom(hueAtom)
 
-  function newColorIfNeeded() {
-    if (deepEqual(hsva, defaultSquareColor)) {
+  function newColorIfNeeded({code}) {
+    if (deepEqual(hsva, defaultSquareColor) && code !== "") {
       const newColor = {
         h: hue,
         s: 40,
@@ -51,11 +59,11 @@ function Square({row, col, prefix}) {
     code,
     inputRef: React.useRef(),
     updateCode(value) {
-      newColorIfNeeded()
+      newColorIfNeeded({code: value})
       setCode(value)
     },
     color() { return hsvaToHex(square.hsva) },
-    at(x, y) { return squares[`${prefix}-${row + y}-${col + x}`] }
+    at(x, y) { return squares[makeId(row + y, col + x)] }
   };
   squares[id] = square;
   return square;
@@ -72,18 +80,60 @@ function Button({square}) {
     >{name}</button>
 }
 
-function RenderSquare({square, setSelectedSquare, selectedSquare}) {
-  const selected = square.id === (selectedSquare || {}).id
+
+// Are you seriously not able to edit an atom from a funtion?
+function MoveUp(square, setSelected) {
+  // const [_, setSelected] = useAtom(selectedAtom)
+  const next = square.at(0, -1);
+  if (next) setSelected(next)
+}
+
+function MoveDown(square, setSelected) {
+  // const [_, setSelected] = useAtom(selectedAtom)
+  const next = square.at(0, 1);
+  if (next) setSelected(next)
+}
+
+function MoveLeft(square, setSelected) {
+  // const [_, setSelected] = useAtom(selectedAtom)
+  const next = square.at(-1, 0) || square.at(numCols - 1, -1)
+  if (next) setSelected(next)
+}
+
+function MoveRight(square, setSelected) {
+  // const [_, setSelected] = useAtom(selectedAtom)
+  const next = square.at(1, 0) || square.at(-1 * numCols + 1, 1)
+  if (next) setSelected(next)
+}
+
+function RenderSquare({aPage, square, pageAtom}) {
+  const [selectedSquare, setSelectedSquare] = useAtom(selectedAtom)
+
+  useEffect(() => {
+    console.log('here in square', square, aPage)
+  }, [aPage])
+
+
+  let setPage;
+  if (pageAtom) {
+    setPage = useAtom(pageAtom)[1]
+  }
+
+  const isSelected = square.id === (selectedSquare || {}).id
   const z = 1000 - square.row * numCols - square.col
   const style = {backgroundColor: square.color(), zIndex: z}
   const onClick = function() {
-    if (selected) square.inputRef.current.focus()
+    if (isSelected) square.inputRef.current.focus()
+    if (pageAtom) {
+      console.log('setting page atom to id', pageAtom, square.id)
+      setPage(square.id)
+    }
     setSelectedSquare(square)
   } 
 
-  if (selected) {
+  if (isSelected) {
     return <td
-      className={`square ${selected ? 'selected' : ''}`}
+      className={`square ${isSelected ? 'selected' : ''}`}
       style={style}
       onClick={onClick}
       id={square.id}>
@@ -110,44 +160,39 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
             if (next) setSelectedSquare(next)
           } else if (e.key === 'ArrowUp' && !(e.shiftKey || e.ctrlKey)) { 
             e.preventDefault()
-            const next = square.at(0, -1);
-            if (next) setSelectedSquare(next)
+            MoveUp(square, setSelectedSquare)
           } else if (e.key === 'ArrowDown' && !(e.shiftKey || e.ctrlKey)) {
-            e.preventDefault()
-            const next = square.at(0, 1);
-            if (next) setSelectedSquare(next)
+            MoveDown(square, setSelectedSquare)
           } else if (e.key === 'ArrowLeft' && !(e.shiftKey || e.ctrlKey)) {
             const atStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
             if (atStart) {
               e.preventDefault()
-              const next = square.at(-1, 0);
-              if (next) setSelectedSquare(next)
+              MoveLeft(square, setSelectedSquare)
             }
           } else if (e.key === 'ArrowRight' && !(e.shiftKey || e.ctrlKey)) { 
             const atEnd = e.target.selectionStart === e.target.value.length && e.target.selectionEnd === e.target.value.length;
             if (atEnd) {
               e.preventDefault()
-              const next = square.at(1, 0);
-              if (next) setSelectedSquare(next)
+              MoveRight(square, setSelectedSquare)
             }
           } else if (e.key === 'Tab' && e.shiftKey) {
             e.preventDefault()
-            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
-            if (next) setSelectedSquare(next)
+            MoveLeft(square, setSelectedSquare)
           } else if (e.key === 'Tab') {
             e.preventDefault()
-            const next = square.at(1, 0) || square.at(-1 * numCols + 1, 1)
-            if (next) setSelectedSquare(next)
+            MoveRight(square, setSelectedSquare)
           } else if (e.key === 'Backspace' && e.ctrlKey && e.shiftKey) {
             e.preventDefault()
+            square.updateCode('')
+            square.setTitle('')
             square.setHsva(defaultSquareColor)
-            const next = square.at(0, -1)
-            if (next) setSelectedSquare(next)
+            MoveUp(square, setSelectedSquare)
           } else if (e.key === 'Backspace' && e.ctrlKey) {
             e.preventDefault()
+            square.updateCode('')
+            square.setTitle('')
             square.setHsva(defaultSquareColor)
-            const next = square.at(-1, 0) || square.at(numCols - 1, -1)
-            if (next) setSelectedSquare(next)
+            MoveLeft(square, setSelectedSquare)
           } else if (e.key === 'Backspace' && square.title.length === 0 && e.shiftKey) {
             e.preventDefault()
             const next = square.at(0, -1)
@@ -181,7 +226,16 @@ function RenderSquare({square, setSelectedSquare, selectedSquare}) {
 const numRows = 30;
 const numCols = 22;
 
-function Grid({prefix, rows, cols, setSelectedSquare, selectedSquare}) {
+function Grid({pageAtom, aPage, bPage, prefix, rows, cols}) {
+
+  useEffect(() => {
+    console.log('here', aPage)
+  }, [aPage])
+
+  if (!pageAtom) { // then it is the main grid
+    prefix = `${aPage}:${bPage}:${prefix}`
+  }
+
   return <table className="grid">
   <tbody>
     {range(rows).map((i) => 
@@ -189,11 +243,7 @@ function Grid({prefix, rows, cols, setSelectedSquare, selectedSquare}) {
         {range(cols).map((j) => {
           const square = Square({row:i , col: j, prefix: prefix});
           return (
-            <RenderSquare
-              key={square.id}
-              selectedSquare={selectedSquare}
-              setSelectedSquare={setSelectedSquare}
-              square={square} />
+            <RenderSquare aPage={aPage} bPage={bPage} pageAtom={pageAtom} key={square.id} square={square} />
           )
         })}
       </tr>
@@ -202,28 +252,66 @@ function Grid({prefix, rows, cols, setSelectedSquare, selectedSquare}) {
   </table>
 }
 
-function NavigationGrids({setSelectedSquare, selectedSquare}) {
+function NavigationGrids() {
   return <div className='navigation-grid'>
-    <Grid prefix='b' rows={2} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
-    <Grid prefix='c' rows={3} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <Grid prefix='a' pageAtom={aPageAtom} rows={2} cols={numCols} />
+    <Grid prefix='b' pageAtom={bPageAtom} rows={3} cols={numCols} />
   </div>;
 }
 
-function SquareEditor({ square, setSelectedSquare}) {
-  const [hue, setHue] = useAtom(hueAtom)
+
+function movementKeymaps(selected, setSelected) {
+  return keymap.of([
+    {
+      key: "Ctrl-ArrowLeft",
+      run: () => {
+        MoveLeft(selected, setSelected)
+        setTimeout(() => editorView.focus(), 0)
+      }
+    },
+    {
+      key: "Ctrl-ArrowRight",
+      run: () => {
+        MoveRight(selected, setSelected)
+        setTimeout(() => editorView.focus(), 0)
+      }
+    },
+    {
+      key: "Ctrl-ArrowUp",
+      run: () => {
+        MoveUp(selected, setSelected)
+        setTimeout(() => editorView.focus(), 0)
+      }
+    },
+    {
+      key: "Ctrl-ArrowDown",
+      run: () => {
+        MoveDown(selected, setSelected)
+        setTimeout(() => editorView.focus(), 0)
+      }
+    },
+  ])
+}
+
+
+function SquareEditor({square}) {
+  const [_, setHue] = useAtom(hueAtom)
+  const [selected, setSelected] = useAtom(selectedAtom)
 
   if (!square) {
     return <div className="square-editor">
-        <NavigationGrids selectedSquare={square} setSelectedSquare={setSelectedSquare} />
+        <NavigationGrids />
       </div>
   } else {
     return <div className="square-editor">
-      <NavigationGrids selectedSquare={square} setSelectedSquare={setSelectedSquare} />
-      {console.log('render square editor', square)}
+      <NavigationGrids />
       <CodeMirror
         square={square}
+        setSelected={setSelected}
         onChange={(value) => square.updateCode(value)}
-        onControlEnter={() => square.inputRef.current.focus() } />
+        onControlEnter={() => square.inputRef.current.focus() }
+        keymaps={movementKeymaps(selected, setSelected)}
+      />
       <Wheel color={defaultSquareColor} onChange={(color) => {
         setHue(color.hsva.h)
         square.setHsva(color.hsva) 
@@ -233,10 +321,19 @@ function SquareEditor({ square, setSelectedSquare}) {
 }
 
 function Main() {
-    const [selectedSquare, setSelectedSquare] = useState(null);
+  const [selected] = useAtom(selectedAtom)
+
+  const [bPage] = useAtom(bPageAtom)
+  const [aPage] = useAtom(aPageAtom)
   return <div className='main'>
-    <Grid prefix='a' rows={numRows} cols={numCols} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} />
-    <SquareEditor square={selectedSquare} setSelectedSquare={setSelectedSquare} />
+    <Grid isMain={true} prefix='c' rows={numRows} cols={numCols} aPage={aPage} bPage={bPage} />
+    <SquareEditor square={selected} />
+    <p>
+      aPage {aPage}
+    </p>
+    <p>
+      bPage {bPage}
+    </p>
   </div>
 }
 

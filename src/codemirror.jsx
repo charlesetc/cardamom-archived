@@ -8,12 +8,14 @@ import { closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirro
 import { lintKeymap } from '@codemirror/lint';
 
 
-const controlEnter = (callback) => keymap.of([
-  {
-    key: 'Ctrl-Enter',
-    run: callback
-  }
-]);
+function controlEnter(callback) {
+  return keymap.of([
+    {
+      key: 'Ctrl-Enter',
+      run: callback
+    }
+  ]);
+}
 
 const basicSetup = [
     highlightActiveLineGutter(),
@@ -44,17 +46,16 @@ const basicSetup = [
 
 export let editorView = null;
 
-export const CodeMirror = ({ square, onChange, onControlEnter }) => {
+export const CodeMirror = ({ square, onChange, onControlEnter, keymaps }) => {
   const ref = useRef(null);
   useEffect(() => {
     const value = square.code;
-    console.log("value", ref.current, value)
     editorView = new EditorView({
       state: EditorState.create({
         doc: value,
         extensions: [
           basicSetup,
-          [ controlEnter(onControlEnter) ],
+          [ controlEnter(onControlEnter), keymaps ],
           EditorView.lineWrapping,
         ]  
       }),

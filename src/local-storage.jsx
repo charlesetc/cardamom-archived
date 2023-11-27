@@ -11,7 +11,6 @@ export function useLocalStorage(key, defaultValue) {
 
   const [value, setReactValue] = useState(startingValue);
   const setValue = (newValue) => {
-    console.log('set value', key, newValue);
     setReactValue(newValue);
     localStorage[key] = JSON.stringify(newValue);
   }
